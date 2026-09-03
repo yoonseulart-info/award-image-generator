@@ -280,12 +280,11 @@ table.entry-table tbody td.fill-hl { background: #1a1040 !important; outline: 1p
       <!-- 저장된 배경 슬롯 -->
       <div class="bg-slots" id="bgSlots"></div>
       <!-- 업로드 -->
-      <div class="upload-zone" id="uploadZone" style="margin-top:6px;cursor:pointer">
-        <input type="file" id="bgInput" accept="image/*" style="position:fixed;top:-100px;left:-100px;width:1px;height:1px;opacity:0;">
+      <label class="upload-zone" id="uploadZone" for="bgInput" style="margin-top:6px;cursor:pointer;display:block;">
         <div class="ico">➕</div>
         <strong id="uploadLabel">새 이미지 업로드</strong>
         <small id="uploadSub">클릭 또는 드래그 · 슬롯에 자동 저장</small>
-      </div>
+      </label>
     </div>
     <div>
       <div class="sec-label">② 텍스트 설정 <span style="font-size:9px;color:#444466;text-transform:none;letter-spacing:0">· 클릭해서 펼치기</span></div>
@@ -624,11 +623,16 @@ function updateFieldStatus(id) {
 // ═══════════════════════════════════════
 const uploadZone = document.getElementById('uploadZone');
 const bgInput    = document.getElementById('bgInput');
-uploadZone.addEventListener('click', () => bgInput.click());
+// label[for=bgInput]이 직접 파일창 열기 처리
+// 같은 파일 재선택을 위해 change 후 value 초기화
+
 uploadZone.addEventListener('dragover', e=>{e.preventDefault();uploadZone.classList.add('over');});
 uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('over'));
 uploadZone.addEventListener('drop', e=>{e.preventDefault();uploadZone.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))loadBg(f);});
-bgInput.addEventListener('change', e=>{if(e.target.files[0])loadBg(e.target.files[0]);});
+bgInput.addEventListener('change', e=>{
+  if(e.target.files[0]) loadBg(e.target.files[0]);
+  e.target.value = ''; // 같은 파일 재선택 가능
+});
 
 function loadBg(file) {
   // 로딩 표시
@@ -815,11 +819,11 @@ function renderSlots() {
 
   // 빈 슬롯
   if (slots.length < MAX_SLOTS) {
-    const add = document.createElement('div');
+    const add = document.createElement('label');
     add.className = 'bg-slot empty-slot';
+    add.htmlFor = 'bgInput';
     add.style.cursor = 'pointer';
     add.innerHTML = '<div class="empty-slot-inner"><div class="s-ico">➕</div><p>이미지 추가 (' + slots.length + '/' + MAX_SLOTS + ')</p></div>';
-    add.addEventListener('click', () => document.getElementById('bgInput').click());
     container.appendChild(add);
   }
 }
@@ -1867,5 +1871,6 @@ renderSheet();
 renderSlots();
 bindColHeaders();
 </script>
+<input type="file" id="bgInput" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;visibility:hidden;">
 </body>
 </html>
