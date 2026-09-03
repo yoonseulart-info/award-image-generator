@@ -205,6 +205,56 @@ table.entry-table tbody td.sel-anchor { background: #3a2070 !important; outline:
 table.entry-table tbody td:hover .fill-handle { opacity: 1; }
 table.entry-table tbody td.fill-hl { background: #1a1040 !important; outline: 1px solid #7755ee; }
 
+/* ══ 구글 시트 모달 ══ */
+.gsheet-modal-bg {
+  position: fixed; inset: 0; background: #00000088; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.gsheet-modal {
+  background: #14142a; border: 1.5px solid #7755ee44;
+  border-radius: 14px; padding: 28px 32px; width: 520px; max-width: 94vw;
+  box-shadow: 0 20px 60px #00000099;
+}
+.gsheet-modal h2 { font-size: 15px; font-weight: 700; color: #c4aaff; margin-bottom: 6px; }
+.gsheet-modal .desc { font-size: 12px; color: #666688; margin-bottom: 18px; line-height: 1.7; }
+.gsheet-modal .desc b { color: #c4aaff; }
+.gsheet-url-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.gsheet-url-row input {
+  flex: 1; background: #0c0c18; border: 1.5px solid #2a2a4a;
+  border-radius: 8px; color: #e2e2ee; padding: 9px 12px;
+  font-size: 12px; font-family: inherit;
+}
+.gsheet-url-row input:focus { outline: none; border-color: #7755ee; }
+.gsheet-url-row input::placeholder { color: #333355; }
+.gsheet-load-btn {
+  padding: 9px 18px; background: #7755ee; border: none;
+  border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.gsheet-load-btn:hover { background: #8866ff; }
+.gsheet-load-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.gsheet-status { font-size: 11px; min-height: 18px; margin-bottom: 10px; }
+.gsheet-status.ok  { color: #4caf50; }
+.gsheet-status.err { color: #ff6666; }
+.gsheet-status.ing { color: #7755ee; }
+.gsheet-preview {
+  background: #0c0c18; border: 1px solid #1e1e32; border-radius: 8px;
+  padding: 10px 12px; font-size: 11px; color: #888899;
+  font-family: 'Consolas','Monaco',monospace; max-height: 140px;
+  overflow-y: auto; margin-bottom: 16px; display: none; line-height: 1.7;
+}
+.gsheet-preview.show { display: block; }
+.gsheet-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.gsheet-cancel { padding: 8px 18px; background: #1e1e38; border: 1px solid #2a2a4a; border-radius: 8px; color: #aaaacc; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.gsheet-cancel:hover { background: #22223a; }
+.gsheet-apply { padding: 8px 18px; background: #3d7a55; border: none; border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.gsheet-apply:hover { background: #4d8a65; }
+.gsheet-apply:disabled { opacity: 0.4; cursor: not-allowed; }
+.how-to { background: #0f0f22; border: 1px solid #1e1e32; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
+.how-to p { font-size: 11px; color: #555577; line-height: 1.8; }
+.how-to p b { color: #9988dd; }
+
 /* 토스트 */
 #copyToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #7755ee; color: #fff; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 999; }
 </style>
@@ -291,6 +341,7 @@ table.entry-table tbody td.fill-hl { background: #1a1040 !important; outline: 1p
 <div class="sheet-page">
   <div class="sheet-toolbar">
     <span class="tip">입력 후 <b>➡️ 생성탭에 바로 넣기</b> 클릭 → 이미지 생성 탭으로 이동</span>
+    <button class="tbtn" style="background:#1a6634;color:#fff" id="gsheetBtn">📊 구글 시트에서 불러오기</button>
     <button class="tbtn tbtn-green"  id="copyAllBtn">📋 G열 복사</button>
     <button class="tbtn tbtn-purple" id="sendToGenBtn">➡️ 생성탭에 바로 넣기</button>
     <button class="tbtn tbtn-gray"   id="clearSheetBtn">🗑 초기화</button>
@@ -315,6 +366,33 @@ table.entry-table tbody td.fill-hl { background: #1a1040 !important; outline: 1p
 </div>
 </div>
 
+<!-- 구글 시트 불러오기 모달 -->
+<div class="gsheet-modal-bg" id="gsheetModalBg" style="display:none">
+  <div class="gsheet-modal">
+    <h2>📊 구글 시트에서 불러오기</h2>
+    <p class="desc">
+      구글 시트를 <b>링크 있는 모든 사용자에게 공개</b>로 설정한 뒤<br>
+      공유 링크를 붙여넣으세요. 자동으로 데이터를 읽어와요.
+    </p>
+    <div class="how-to">
+      <p>
+        <b>공개 설정 방법:</b> 구글 시트 → 우측 상단 <b>공유</b> → <b>링크 있는 모든 사용자</b> → <b>뷰어</b> → 완료<br>
+        <b>열 순서:</b> 실기대회명1 · 실기대회명2 · 수상등급 · 이름 · 학교 · 학원명
+      </p>
+    </div>
+    <div class="gsheet-url-row">
+      <input type="text" id="gsheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/...">
+      <button class="gsheet-load-btn" id="gsheetLoadBtn">불러오기</button>
+    </div>
+    <div class="gsheet-status" id="gsheetStatus"></div>
+    <div class="gsheet-preview" id="gsheetPreview"></div>
+    <div class="gsheet-btns">
+      <button class="gsheet-cancel" id="gsheetCancel">취소</button>
+      <button class="gsheet-apply" id="gsheetApply" disabled>✓ 입력표에 적용</button>
+    </div>
+  </div>
+</div>
+
 <div id="copyToast">복사됐어요! ✓</div>
 <div id="selHint" class="sel-hint"></div>
 
@@ -324,12 +402,12 @@ table.entry-table tbody td.fill-hl { background: #1a1040 !important; outline: 1p
 // 필드 정의
 // ═══════════════════════════════════════
 const FIELDS = [
-  { id:'line1',   label:'실기대회명1', col:'line1',   dot:'#c4aaff', color:'#ffffff', size:85,  weight:'700', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'' },
-  { id:'line2',   label:'실기대회명2', col:'line2',   dot:'#aaccff', color:'#ffffff', size:65,  weight:'900', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'' },
-  { id:'grade',   label:'수상',        col:'grade',   dot:'#ffccee', color:'#ffffff', size:320, weight:'900', align:'center', strokeColor:'#1a0030', strokeWidth:6, defaultVal:'' },
-  { id:'name',    label:'이름',        col:'name',    dot:'#ffd4aa', color:'#ffffff', size:80,  weight:'700', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'' },
-  { id:'school',  label:'학교',        col:'school',  dot:'#aaffcc', color:'#ddddff', size:40,  weight:'500', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'' },
-  { id:'academy', label:'학원명',      col:'academy', dot:'#ffe4aa', color:'#ffffff', size:38,  weight:'700', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'윤슬미술학원' },
+  { id:'line1',   label:'실기대회명1', col:'line1',   dot:'#c4aaff', color:'#ffffff', size:85,  weight:'700', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'', useGrad:false, gradTop:'#ffffff', gradBottom:'#aaaaaa' },
+  { id:'line2',   label:'실기대회명2', col:'line2',   dot:'#aaccff', color:'#ffffff', size:65,  weight:'900', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'', useGrad:false, gradTop:'#ffffff', gradBottom:'#aaaaaa' },
+  { id:'grade',   label:'수상',        col:'grade',   dot:'#ffccee', color:'#ffffff', size:320, weight:'900', align:'center', strokeColor:'#1a0030', strokeWidth:6, defaultVal:'', useGrad:false, gradTop:'#ffffff', gradBottom:'#cc88ff' },
+  { id:'name',    label:'이름',        col:'name',    dot:'#ffd4aa', color:'#ffffff', size:80,  weight:'700', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'', useGrad:false, gradTop:'#ffffff', gradBottom:'#aaaaaa' },
+  { id:'school',  label:'학교',        col:'school',  dot:'#aaffcc', color:'#ddddff', size:40,  weight:'500', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'', useGrad:false, gradTop:'#ddddff', gradBottom:'#9999cc' },
+  { id:'academy', label:'학원명',      col:'academy', dot:'#ffe4aa', color:'#ffffff', size:38,  weight:'700', align:'center', strokeColor:'#000000', strokeWidth:0, defaultVal:'윤슬미술학원', useGrad:false, gradTop:'#ffffff', gradBottom:'#aaaaaa' },
 ];
 const POS = {};
 FIELDS.forEach(f => { POS[f.id] = { x:null, y:null, placed:false }; });
@@ -412,6 +490,56 @@ function buildFieldCards() {
     const inpSColor = makeColorInput(f.strokeColor);
     inpSColor.addEventListener('input', e => { f.strokeColor=e.target.value; if(bgImg) redraw(); });
     r3.appendChild(inpRange); r3.appendChild(swNum); r3.appendChild(inpSColor); body.appendChild(r3);
+
+    // 그라데이션
+    const rGrad = document.createElement('div');
+    rGrad.className = 'frow'; rGrad.style.flexWrap = 'wrap'; rGrad.style.gap = '5px';
+
+    // 토글 체크박스
+    const gradToggleWrap = document.createElement('label');
+    gradToggleWrap.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer;font-size:10px;color:#aaaacc;width:100%;';
+    const gradChk = document.createElement('input'); gradChk.type='checkbox'; gradChk.checked=f.useGrad;
+    gradChk.style.accentColor='#7755ee';
+    const gradToggleTxt = document.createElement('span'); gradToggleTxt.textContent='그라데이션';
+    gradToggleWrap.appendChild(gradChk); gradToggleWrap.appendChild(gradToggleTxt);
+
+    // 색상 피커 행 (처음엔 숨김)
+    const gradColors = document.createElement('div');
+    gradColors.style.cssText = 'display:' + (f.useGrad?'flex':'none') + ';align-items:center;gap:6px;width:100%;';
+
+    const lblTop = document.createElement('span'); lblTop.style.cssText='font-size:10px;color:#666688;'; lblTop.textContent='위';
+    const inpGTop = makeColorInput(f.gradTop);
+    inpGTop.addEventListener('input', e => { f.gradTop=e.target.value; if(bgImg) redraw(); });
+
+    const arrow = document.createElement('span'); arrow.textContent='→'; arrow.style.cssText='font-size:10px;color:#555577;';
+
+    const lblBot = document.createElement('span'); lblBot.style.cssText='font-size:10px;color:#666688;'; lblBot.textContent='아래';
+    const inpGBot = makeColorInput(f.gradBottom);
+    inpGBot.addEventListener('input', e => { f.gradBottom=e.target.value; if(bgImg) redraw(); });
+
+    // 색상 미리보기 바
+    const gradPreview = document.createElement('div');
+    gradPreview.style.cssText = 'flex:1;height:16px;border-radius:3px;border:1px solid #22223a;';
+    function updateGradPreview() {
+      gradPreview.style.background = 'linear-gradient(to bottom, '+f.gradTop+', '+f.gradBottom+')';
+    }
+    updateGradPreview();
+    inpGTop.addEventListener('input', updateGradPreview);
+    inpGBot.addEventListener('input', updateGradPreview);
+
+    gradColors.appendChild(lblTop); gradColors.appendChild(inpGTop);
+    gradColors.appendChild(arrow);
+    gradColors.appendChild(lblBot); gradColors.appendChild(inpGBot);
+    gradColors.appendChild(gradPreview);
+
+    gradChk.addEventListener('change', e => {
+      f.useGrad = e.target.checked;
+      gradColors.style.display = f.useGrad ? 'flex' : 'none';
+      if(bgImg) redraw();
+    });
+
+    rGrad.appendChild(gradToggleWrap); rGrad.appendChild(gradColors);
+    body.appendChild(rGrad);
 
     card.appendChild(body);
 
@@ -773,6 +901,25 @@ function drawFields(ctx, data, showGuide) {
     ctx.save();
     ctx.font=`${f.weight} ${f.size}px 'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif`;
     ctx.textAlign=f.align; ctx.textBaseline='middle';
+
+    // 그라데이션 또는 단색 fillStyle 결정
+    let fillStyle;
+    if(f.useGrad) {
+      const metrics = ctx.measureText(text);
+      const tw = metrics.width;
+      const th = f.size;
+      // textAlign에 따라 그라데이션 시작 x 계산
+      let gx = pos.x;
+      if(f.align==='center') gx = pos.x - tw/2;
+      if(f.align==='right')  gx = pos.x - tw;
+      const grad = ctx.createLinearGradient(gx, pos.y - th/2, gx, pos.y + th/2);
+      grad.addColorStop(0, f.gradTop);
+      grad.addColorStop(1, f.gradBottom);
+      fillStyle = grad;
+    } else {
+      fillStyle = f.color;
+    }
+
     if(f.strokeWidth>0){
       ctx.strokeStyle=f.strokeColor; ctx.lineWidth=f.strokeWidth*2;
       ctx.lineJoin='round'; ctx.miterLimit=2;
@@ -780,7 +927,7 @@ function drawFields(ctx, data, showGuide) {
       ctx.strokeText(text,pos.x,pos.y);
     }
     ctx.shadowColor='rgba(0,0,0,0.65)'; ctx.shadowBlur=8; ctx.shadowOffsetX=2; ctx.shadowOffsetY=2;
-    ctx.fillStyle=f.color; ctx.fillText(text,pos.x,pos.y);
+    ctx.fillStyle=fillStyle; ctx.fillText(text,pos.x,pos.y);
     if(showGuide&&activeId===f.id){
       ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
       const w=ctx.measureText(text).width;
@@ -1559,6 +1706,149 @@ document.getElementById('clearSheetBtn').addEventListener('click',()=>{
   if(!confirm('모든 입력 데이터를 지울까요?'))return;
   sheetData.forEach(r=>{r.line1='';r.line2='';r.grade='';r.name='';r.school='';r.academy='';});
   renderSheet();
+});
+
+// ═══════════════════════════════════════
+// 구글 시트 불러오기
+// ═══════════════════════════════════════
+let gsheetParsed = []; // 미리 파싱된 데이터
+
+document.getElementById('gsheetBtn').addEventListener('click', () => {
+  document.getElementById('gsheetModalBg').style.display = 'flex';
+  document.getElementById('gsheetUrlInput').focus();
+});
+document.getElementById('gsheetCancel').addEventListener('click', closeGsheetModal);
+document.getElementById('gsheetModalBg').addEventListener('click', e => {
+  if (e.target === document.getElementById('gsheetModalBg')) closeGsheetModal();
+});
+
+function closeGsheetModal() {
+  document.getElementById('gsheetModalBg').style.display = 'none';
+  document.getElementById('gsheetStatus').textContent = '';
+  document.getElementById('gsheetPreview').classList.remove('show');
+  document.getElementById('gsheetPreview').textContent = '';
+  document.getElementById('gsheetApply').disabled = true;
+  gsheetParsed = [];
+}
+
+// URL에서 시트 ID 추출
+function extractSheetId(url) {
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return m ? m[1] : null;
+}
+
+// 공개 시트 CSV로 내보내기 URL 생성
+function makeCsvUrl(sheetId, gid) {
+  const base = `https://docs.google.com/spreadsheets/d/${sheetId}/export`;
+  return `${base}?format=csv&gid=${gid || 0}`;
+}
+
+// 구글 시트 ID에서 gid 추출 (없으면 0)
+function extractGid(url) {
+  const m = url.match(/[#&]gid=([0-9]+)/);
+  return m ? m[1] : '0';
+}
+
+document.getElementById('gsheetLoadBtn').addEventListener('click', async () => {
+  const url = document.getElementById('gsheetUrlInput').value.trim();
+  const statusEl  = document.getElementById('gsheetStatus');
+  const previewEl = document.getElementById('gsheetPreview');
+  const applyBtn  = document.getElementById('gsheetApply');
+  const loadBtn   = document.getElementById('gsheetLoadBtn');
+
+  if (!url) { statusEl.className='gsheet-status err'; statusEl.textContent='URL을 입력해주세요.'; return; }
+
+  const sheetId = extractSheetId(url);
+  if (!sheetId) { statusEl.className='gsheet-status err'; statusEl.textContent='올바른 구글 시트 URL이 아니에요.'; return; }
+
+  const gid = extractGid(url);
+  const csvUrl = makeCsvUrl(sheetId, gid);
+
+  statusEl.className='gsheet-status ing'; statusEl.textContent='불러오는 중...';
+  loadBtn.disabled = true;
+  previewEl.classList.remove('show');
+  applyBtn.disabled = true;
+  gsheetParsed = [];
+
+  try {
+    // CORS 우회: 구글 시트 공개 CSV export는 직접 fetch 가능
+    const res = await fetch(csvUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const csv = await res.text();
+
+    // CSV 파싱
+    const rows = csv.split(/?
+|/).map(l => l.trim()).filter(l => l);
+    if (!rows.length) throw new Error('데이터가 없어요');
+
+    // 헤더 감지
+    const isHeader = l => /이름|수상|학교|학원|대회|name|grade/i.test(l);
+    const dataRows = isHeader(rows[0]) ? rows.slice(1) : rows;
+
+    // CSV 파싱 (쉼표 구분, 따옴표 처리)
+    function parseCsvLine(line) {
+      const cols = []; let cur = ''; let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQ = !inQ; }
+        else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+        else cur += ch;
+      }
+      cols.push(cur.trim());
+      return cols;
+    }
+
+    gsheetParsed = dataRows.map(line => {
+      const cols = parseCsvLine(line);
+      return {
+        line1:   (cols[0]||'').replace(/^"|"$/g,''),
+        line2:   (cols[1]||'').replace(/^"|"$/g,''),
+        grade:   (cols[2]||'').replace(/^"|"$/g,''),
+        name:    (cols[3]||'').replace(/^"|"$/g,''),
+        school:  (cols[4]||'').replace(/^"|"$/g,''),
+        academy: (cols[5]||'').replace(/^"|"$/g,''),
+      };
+    }).filter(r => r.name || r.grade);
+
+    if (!gsheetParsed.length) throw new Error('유효한 데이터가 없어요. 열 순서를 확인해주세요.');
+
+    // 미리보기
+    statusEl.className='gsheet-status ok';
+    statusEl.textContent=`✓ ${gsheetParsed.length}명 데이터를 읽었어요!`;
+    previewEl.classList.add('show');
+    previewEl.innerHTML = gsheetParsed.slice(0, 8).map((r,i) =>
+      `<span style="color:#7755ee">${i+1}.</span> ${[r.line1,r.line2,r.grade,r.name,r.school,r.academy||'윤슬미술학원'].join(' · ')}`
+    ).join('<br>') + (gsheetParsed.length > 8 ? `<br><span style="color:#555577">... 외 ${gsheetParsed.length-8}명</span>` : '');
+    applyBtn.disabled = false;
+
+  } catch(err) {
+    statusEl.className='gsheet-status err';
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      statusEl.textContent='❌ 불러오기 실패 — 시트가 공개 설정되어 있는지 확인해주세요.';
+    } else {
+      statusEl.textContent='❌ ' + err.message;
+    }
+    gsheetParsed = [];
+    applyBtn.disabled = true;
+  } finally {
+    loadBtn.disabled = false;
+  }
+});
+
+// 입력표에 적용
+document.getElementById('gsheetApply').addEventListener('click', () => {
+  if (!gsheetParsed.length) return;
+  // 기존 데이터 초기화
+  sheetData.forEach(r => { r.line1='';r.line2='';r.grade='';r.name='';r.school='';r.academy=''; });
+  // 데이터 입력 (최대 TOTAL_ROWS까지)
+  gsheetParsed.slice(0, TOTAL_ROWS).forEach((row, i) => {
+    COL_KEYS.forEach(k => { sheetData[i][k] = row[k] || ''; });
+  });
+  renderSheet();
+  closeGsheetModal();
+  // 자동으로 입력표 탭으로 이동
+  switchTab('sheet');
+  showToast(`${Math.min(gsheetParsed.length, TOTAL_ROWS)}명 데이터를 입력표에 불러왔어요! ✓`);
 });
 
 function showToast(msg){
