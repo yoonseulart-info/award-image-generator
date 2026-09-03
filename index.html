@@ -138,7 +138,7 @@ header .sub { font-size: 11px; color: #555577; background: #1a1a2e; border: 1px 
 }
 .bg-slot:hover { border-color: #7755ee; background: #130f2a; }
 .bg-slot.active-slot { border-color: #7755ee; background: #1a0f3a; box-shadow: 0 0 0 1px #7755ee44; }
-.bg-slot.empty-slot { border-style: dashed; border-color: #252540; justify-content: center; padding: 10px; }
+.bg-slot.empty-slot { border-style: dashed; border-color: #7755ee55; justify-content: center; padding: 14px 10px; background: #0d0d1a; }
 .bg-slot.empty-slot:hover { border-color: #7755ee; }
 .slot-thumb {
   width: 36px; height: 46px; border-radius: 4px; object-fit: cover;
@@ -160,8 +160,8 @@ header .sub { font-size: 11px; color: #555577; background: #1a1a2e; border: 1px 
 .sov-btn.del:hover { background: #aa2222; border-color: #aa2222; color: #fff; }
 .slot-loading { font-size: 10px; color: #7755ee; text-align: center; padding: 4px; }
 .empty-slot-inner { text-align: center; }
-.empty-slot-inner .s-ico { font-size: 16px; }
-.empty-slot-inner p { font-size: 9px; color: #444466; margin-top: 2px; }
+.empty-slot-inner .s-ico { font-size: 20px; margin-bottom: 4px; }
+.empty-slot-inner p { font-size: 10px; color: #7755ee99; margin-top: 2px; font-weight:600; }
 
 /* ══ 스프레드시트 탭 ══ */
 .sheet-page { width: 100%; overflow: hidden; display: flex; flex-direction: column; }
@@ -280,12 +280,12 @@ table.entry-table tbody td.fill-hl { background: #1a1040 !important; outline: 1p
       <!-- 저장된 배경 슬롯 -->
       <div class="bg-slots" id="bgSlots"></div>
       <!-- 업로드 -->
-      <label class="upload-zone" id="uploadZone" for="bgInput" style="margin-top:6px;cursor:pointer">
-        <input type="file" id="bgInput" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+      <div class="upload-zone" id="uploadZone" style="margin-top:6px;cursor:pointer">
+        <input type="file" id="bgInput" accept="image/*" style="position:fixed;top:-100px;left:-100px;width:1px;height:1px;opacity:0;">
         <div class="ico">➕</div>
         <strong id="uploadLabel">새 이미지 업로드</strong>
         <small id="uploadSub">클릭 또는 드래그 · 슬롯에 자동 저장</small>
-      </label>
+      </div>
     </div>
     <div>
       <div class="sec-label">② 텍스트 설정 <span style="font-size:9px;color:#444466;text-transform:none;letter-spacing:0">· 클릭해서 펼치기</span></div>
@@ -624,7 +624,7 @@ function updateFieldStatus(id) {
 // ═══════════════════════════════════════
 const uploadZone = document.getElementById('uploadZone');
 const bgInput    = document.getElementById('bgInput');
-// label[for=bgInput]이 클릭을 자동 처리 (HTTPS 환경 호환)
+uploadZone.addEventListener('click', () => bgInput.click());
 uploadZone.addEventListener('dragover', e=>{e.preventDefault();uploadZone.classList.add('over');});
 uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('over'));
 uploadZone.addEventListener('drop', e=>{e.preventDefault();uploadZone.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))loadBg(f);});
@@ -815,11 +815,11 @@ function renderSlots() {
 
   // 빈 슬롯
   if (slots.length < MAX_SLOTS) {
-    const add = document.createElement('label');
+    const add = document.createElement('div');
     add.className = 'bg-slot empty-slot';
-    add.htmlFor = 'bgInput';
     add.style.cursor = 'pointer';
     add.innerHTML = '<div class="empty-slot-inner"><div class="s-ico">➕</div><p>이미지 추가 (' + slots.length + '/' + MAX_SLOTS + ')</p></div>';
+    add.addEventListener('click', () => document.getElementById('bgInput').click());
     container.appendChild(add);
   }
 }
