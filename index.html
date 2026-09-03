@@ -1782,10 +1782,7 @@ document.getElementById('gsheetLoadBtn').addEventListener('click', async () => {
     const csv = await res.text();
 
     // CSV 파싱
-    const rows = csv.split(/
-?
-|
-/).map(l => l.trim()).filter(l => l);
+    const rows = csv.split('\n').map(l => l.trim()).filter(l => l);
     if (!rows.length) throw new Error('데이터가 없어요');
 
     // 헤더 감지
