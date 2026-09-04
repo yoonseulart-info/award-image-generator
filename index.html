@@ -1181,8 +1181,9 @@ function captureSettings() {
       id: f.id, color: f.color, size: f.size, wt: f.wt, align: f.align,
       sw: f.sw, sc: f.sc, dv: f.dv, ug: f.ug, gt: f.gt, gb: f.gb
     })),
+    // origPOS(원본 이미지 기준 좌표)를 저장 - 비율 변경과 무관한 절대 좌표
     pos: FIELDS.reduce((acc, f) => {
-      acc[f.id] = { ...POS[f.id] }; return acc;
+      acc[f.id] = { ...origPOS[f.id] }; return acc;
     }, {}),
     ratio: document.getElementById('ratioSel').value,
   };
@@ -1201,12 +1202,23 @@ function applySettings(cfg) {
       f.dv = saved.dv; f.ug = saved.ug; f.gt = saved.gt; f.gb = saved.gb;
     });
   }
-  // 위치 복원
+  // 위치 복원 - origPOS에 저장하고 POS는 현재 비율에 맞게 재계산
   if (cfg.pos) {
     FIELDS.forEach(f => {
       if (cfg.pos[f.id]) {
-        POS[f.id] = { ...cfg.pos[f.id] };
-        origPOS[f.id] = { ...cfg.pos[f.id] };
+        origPOS[f.id] = { ...cfg.pos[f.id] }; // 원본 좌표 복원
+        // 현재 캔버스 크기에 맞게 POS 재계산
+        if (bgImg && origBgImg) {
+          const cropX = Math.round((origBgImg.width  - bgImg.width)  / 2);
+          const cropY = Math.round((origBgImg.height - bgImg.height) / 2);
+          POS[f.id] = {
+            x: cfg.pos[f.id].x - cropX,
+            y: cfg.pos[f.id].y - cropY,
+            placed: cfg.pos[f.id].placed
+          };
+        } else {
+          POS[f.id] = { ...cfg.pos[f.id] };
+        }
       }
     });
   }
