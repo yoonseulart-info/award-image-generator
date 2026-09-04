@@ -100,6 +100,14 @@ header .sub{font-size:11px;color:#555577;background:#1a1a2e;border:1px solid #22
 .cwrap{position:relative;display:inline-block}
 #cv{max-width:100%;max-height:calc(100vh - 90px);display:block;border-radius:6px;box-shadow:0 8px 48px #00000099;cursor:crosshair;outline:none}
 .ctip{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#12121ecc;backdrop-filter:blur(8px);border:1px solid #22223a;border-radius:20px;padding:4px 12px;font-size:10px;color:#555577;white-space:nowrap;pointer-events:none}
+/* 캔버스 상단 툴바 */
+.cv-toolbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;background:#12121ecc;backdrop-filter:blur(8px);border:1px solid #22223a;border-radius:20px;padding:5px 12px;align-items:center;z-index:10}
+.cv-btn{background:none;border:1px solid #2a2a44;border-radius:5px;color:#8888aa;font-size:10px;font-weight:600;padding:3px 8px;cursor:pointer;font-family:inherit;transition:all .13s;white-space:nowrap}
+.cv-btn:hover{background:#22223a;color:#c4aaff}
+.cv-btn.on{background:#7755ee22;border-color:#7755ee;color:#c4aaff}
+.cv-sep{width:1px;height:14px;background:#2a2a44;flex-shrink:0}
+.ratio-sel{background:#0c0c18;border:1px solid #2a2a44;border-radius:5px;color:#8888aa;font-size:10px;padding:3px 6px;cursor:pointer;font-family:inherit}
+.ratio-sel:focus{outline:none;border-color:#7755ee}
 .cwrap.drag #cv{cursor:grabbing}
 
 /* 오른쪽 패널 */
@@ -253,6 +261,23 @@ tbody td:hover .fhandle{opacity:1}
   <div class="canvas-area">
     <div class="no-img" id="noImg"><div class="ico">🖼️</div><p>배경 이미지를 업로드하세요</p></div>
     <div class="cwrap" id="cwrap" style="display:none">
+      <div class="cv-toolbar">
+        <span style="font-size:10px;color:#555577;">선택 필드 정렬:</span>
+        <button class="cv-btn" id="alignLBtn">◀ 왼쪽</button>
+        <button class="cv-btn" id="alignCBtn">⊕ 가운데</button>
+        <button class="cv-btn" id="alignRBtn">오른쪽 ▶</button>
+        <div class="cv-sep"></div>
+        <span style="font-size:10px;color:#555577;">비율:</span>
+        <select class="ratio-sel" id="ratioSel">
+          <option value="orig">원본</option>
+          <option value="1:1">1:1 정사각</option>
+          <option value="4:3">4:3</option>
+          <option value="3:2">3:2</option>
+          <option value="16:9">16:9 와이드</option>
+          <option value="9:16">9:16 세로</option>
+          <option value="3:4">3:4 세로</option>
+        </select>
+      </div>
       <canvas id="cv" tabindex="0"></canvas>
       <div class="ctip">필드 선택 후 클릭 배치 · 드래그 이동 · 화살표키 (Shift=10px)</div>
     </div>
@@ -676,22 +701,32 @@ function drawF(ctx,data,guide){
     ctx.save();
     ctx.font=f.wt+' '+f.size+'px "Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
     ctx.textAlign=f.align; ctx.textBaseline='middle';
-    // fillStyle
+    const tw=ctx.measureText(t).width;
+    const th=f.size*1.2; // 실제 높이 여유있게
+    // 텍스트 좌측 x
+    let tx=pos.x;
+    if(f.align==='center')tx=pos.x-tw/2;
+    if(f.align==='right')tx=pos.x-tw;
+    // fillStyle (그라데이션)
     let fs;
     if(f.ug){
-      const m=ctx.measureText(t),tw=m.width,th=f.size;
-      let gx=pos.x; if(f.align==='center')gx=pos.x-tw/2; if(f.align==='right')gx=pos.x-tw;
-      const g=ctx.createLinearGradient(gx,pos.y-th/2,gx,pos.y+th/2);
+      const g=ctx.createLinearGradient(tx,pos.y-th/2,tx,pos.y+th/2);
       g.addColorStop(0,f.gt); g.addColorStop(1,f.gb); fs=g;
     }else{fs=f.color;}
     // 테두리
-    if(f.sw>0){ctx.strokeStyle=f.sc;ctx.lineWidth=f.sw*2;ctx.lineJoin='round';ctx.miterLimit=2;ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;ctx.strokeText(t,pos.x,pos.y);}
+    if(f.sw>0){
+      ctx.strokeStyle=f.sc;ctx.lineWidth=f.sw*2;ctx.lineJoin='round';ctx.miterLimit=2;
+      ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+      ctx.strokeText(t,pos.x,pos.y);
+    }
+    // 채우기
     ctx.shadowColor='rgba(0,0,0,0.65)';ctx.shadowBlur=8;ctx.shadowOffsetX=2;ctx.shadowOffsetY=2;
     ctx.fillStyle=fs; ctx.fillText(t,pos.x,pos.y);
+    // 가이드
     if(guide&&activeId===f.id){
       ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
-      const w=ctx.measureText(t).width; let gx=pos.x; if(f.align==='center')gx=pos.x-w/2; if(f.align==='right')gx=pos.x-w;
-      ctx.strokeStyle='#7755eeaa';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.strokeRect(gx-4,pos.y-f.size/2-4,w+8,f.size+8);ctx.setLineDash([]);
+      ctx.strokeStyle='#7755eeaa';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+      ctx.strokeRect(tx-4,pos.y-th/2,tw+8,th);ctx.setLineDash([]);
     }
     ctx.restore();
   });
@@ -1041,6 +1076,108 @@ document.getElementById('mapply').onclick=()=>{
   gsParsed2.slice(0,ROWS).forEach((row,i)=>COLS.forEach(k=>{sdata[i][k]=row[k]||'';}));
   buildSheet(); closeModal(); goTab('sheet');
   toast(Math.min(gsParsed2.length,ROWS)+'명 불러왔어요!');
+};
+
+// ════════════════════════════════════════
+// 정렬 자동 이동
+// ════════════════════════════════════════
+// 정렬 버튼: 선택된 필드를 이미지 기준으로 자동 이동
+// - 가운데: x = 이미지 너비/2, textAlign = center
+// - 왼쪽:   x = 여백(60px), textAlign = left
+// - 오른쪽: x = 이미지 너비 - 여백(60px), textAlign = right
+// 필드가 선택 안 됐으면 배치된 모든 필드에 적용
+
+function doAlign(dir) {
+  if (!bgImg) { toast('배경 이미지를 먼저 업로드하세요'); return; }
+  const targets = activeId
+    ? [FIELDS.find(f => f.id === activeId)].filter(Boolean)
+    : FIELDS.filter(f => POS[f.id].placed);
+  if (!targets.length) { toast('필드를 먼저 선택하거나 배치하세요'); return; }
+
+  const W = bgImg.width, pad = Math.round(W * 0.05); // 5% 여백
+  targets.forEach(f => {
+    const pos = POS[f.id];
+    if (dir === 'center') {
+      pos.x = W / 2;
+      f.align = 'center';
+    } else if (dir === 'left') {
+      pos.x = pad;
+      f.align = 'left';
+    } else if (dir === 'right') {
+      pos.x = W - pad;
+      f.align = 'right';
+    }
+    pos.placed = true;
+    updFieldStatus(f.id);
+    // 필드 카드 정렬 버튼 UI 업데이트
+    const fbtns = document.getElementById('fbt-' + f.id);
+    if (fbtns) fbtns.querySelectorAll('.fbtn').forEach(b => b.classList.toggle('on', b.dataset.a === f.align));
+  });
+  redraw();
+  const label = dir === 'center' ? '가운데' : dir === 'left' ? '왼쪽' : '오른쪽';
+  toast((activeId ? targets[0].lbl : '전체 필드') + ' → ' + label + ' 정렬 이동됨');
+}
+
+document.getElementById('alignLBtn').onclick = () => doAlign('left');
+document.getElementById('alignCBtn').onclick = () => doAlign('center');
+document.getElementById('alignRBtn').onclick = () => doAlign('right');
+
+// ════════════════════════════════════════
+// 비율 변경
+// ════════════════════════════════════════
+let origW = 0, origH = 0; // 원본 이미지 크기 보존
+
+function applyRatio(ratio) {
+  if (!bgImg) return;
+  if (!origW) { origW = bgImg.width; origH = bgImg.height; }
+
+  let newW, newH;
+  if (ratio === 'orig') {
+    newW = origW; newH = origH;
+  } else {
+    const [rw, rh] = ratio.split(':').map(Number);
+    // 원본 크기 기준으로 비율에 맞게 크롭
+    const origRatio = origW / origH;
+    const targetRatio = rw / rh;
+    if (targetRatio > origRatio) {
+      newW = origW; newH = Math.round(origW / targetRatio);
+    } else {
+      newH = origH; newW = Math.round(origH * targetRatio);
+    }
+  }
+
+  const cv2 = document.getElementById('cv');
+  cv2.width = newW; cv2.height = newH;
+
+  // 배치된 텍스트 위치를 새 캔버스 기준으로 재매핑
+  const scaleX = newW / origW, scaleY = newH / origH;
+  // 크롭 오프셋 (가운데 크롭)
+  const cropX = Math.round((origW - newW / scaleX) / 2) * scaleX;
+  const cropY = Math.round((origH - newH / scaleY) / 2) * scaleY;
+
+  FIELDS.forEach(f => {
+    if (!POS[f.id].placed) return;
+    POS[f.id].x = POS[f.id].x * scaleX - cropX;
+    POS[f.id].y = POS[f.id].y * scaleY - cropY;
+    updFieldStatus(f.id);
+  });
+
+  // 오프스크린 캔버스로 크롭된 이미지 생성
+  const off = document.createElement('canvas'); off.width = newW; off.height = newH;
+  const octx = off.getContext('2d');
+  const sx = Math.round((origW - newW) / 2), sy = Math.round((origH - newH) / 2);
+  octx.drawImage(bgImg, Math.max(0,sx), Math.max(0,sy), newW, newH, 0, 0, newW, newH);
+
+  // 크롭된 이미지를 새 bgImg로
+  const img2 = new Image();
+  img2.onload = () => { bgImg = img2; redraw(); };
+  img2.src = off.toDataURL('image/png');
+  toast(ratio === 'orig' ? '원본 비율로 복원' : ratio + ' 비율 적용됨');
+}
+
+document.getElementById('ratioSel').onchange = e => {
+  applyRatio(e.target.value);
+  if (e.target.value === 'orig') origW = origH = 0; // 원본 복원 시 리셋
 };
 
 // ════════════════════════════════════════
