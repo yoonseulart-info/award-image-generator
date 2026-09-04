@@ -98,7 +98,9 @@ header .sub{font-size:11px;color:#555577;background:#1a1a2e;border:1px solid #22
 .no-img .ico{font-size:40px;margin-bottom:8px}
 .no-img p{font-size:13px}
 .cwrap{position:relative;display:inline-block}
-#cv{max-width:100%;max-height:calc(100vh - 90px);display:block;border-radius:6px;box-shadow:0 8px 48px #00000099;cursor:crosshair;outline:none}
+#cv{max-width:calc(100% - 24px);max-height:calc(100vh - 130px);display:block;border-radius:6px;box-shadow:0 8px 48px #00000099;cursor:crosshair;outline:none}
+.canvas-area{align-items:center;justify-content:center}
+.cwrap{display:flex;align-items:center;justify-content:center}
 .ctip{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#12121ecc;backdrop-filter:blur(8px);border:1px solid #22223a;border-radius:20px;padding:4px 12px;font-size:10px;color:#555577;white-space:nowrap;pointer-events:none}
 /* 캔버스 상단 툴바 */
 .cv-toolbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;background:#12121ecc;backdrop-filter:blur(8px);border:1px solid #22223a;border-radius:20px;padding:5px 12px;align-items:center;z-index:10}
@@ -388,7 +390,7 @@ FIELDS.forEach(f => { POS[f.id] = {x:null,y:null,placed:false}; });
 // ════════════════════════════════════════
 // 상태
 // ════════════════════════════════════════
-let bgImg=null, activeId=null, curPrev=0;
+let bgImg=null, origBgImg=null, activeId=null, curPrev=0; // origBgImg: 원본 이미지 보존
 let imgs=[]; // {grade,name,dataUrl,filename,selected}
 let drag={on:false,fid:null,sx:0,sy:0,ox:0,oy:0};
 let fillDrag={on:false,cols:[],startRow:0,srcEnd:0,endRow:0,vals:[]};
@@ -474,7 +476,9 @@ function activateSlot(i){
 }
 
 function setBg(img,name,sizeStr){
-  bgImg=img;
+  bgImg=img; origBgImg=img; // 원본 보존
+  origW=img.width; origH=img.height; // 비율 기준도 리셋
+  document.getElementById('ratioSel').value='orig'; // 셀렉터 리셋
   const cv=document.getElementById('cv'); cv.width=img.width; cv.height=img.height;
   document.getElementById('noImg').style.display='none';
   document.getElementById('cwrap').style.display='inline-block';
@@ -642,7 +646,7 @@ cv.addEventListener('mousedown',e=>{
   if(!bgImg)return; const {x,y}=toCV(e);
   const hit=hitField(x,y);
   if(hit){drag={on:true,fid:hit.id,sx:e.clientX,sy:e.clientY,ox:POS[hit.id].x,oy:POS[hit.id].y};activeId=hit.id;cwrap.classList.add('drag');toggleField(hit.id);e.preventDefault();return;}
-  if(activeId){POS[activeId].x=x;POS[activeId].y=y;POS[activeId].placed=true;updFieldStatus(activeId);const nxt=FIELDS.find(f=>!POS[f.id].placed);if(nxt)activeId=nxt.id;redraw();}
+  if(activeId){POS[activeId].x=x;POS[activeId].y=y;POS[activeId].placed=true;updFieldStatus(activeId);syncOrigPOS();const nxt=FIELDS.find(f=>!POS[f.id].placed);if(nxt)activeId=nxt.id;redraw();}
 });
 window.addEventListener('mousemove',e=>{
   if(!drag.on)return;
@@ -651,7 +655,7 @@ window.addEventListener('mousemove',e=>{
   POS[drag.fid].y=drag.oy+(e.clientY-drag.sy)*(cv.height/r.height);
   POS[drag.fid].placed=true;updFieldStatus(drag.fid);redraw();
 });
-window.addEventListener('mouseup',()=>{if(drag.on){drag.on=false;cwrap.classList.remove('drag');}});
+window.addEventListener('mouseup',()=>{if(drag.on){drag.on=false;cwrap.classList.remove('drag');syncOrigPOS();}});
 
 cv.addEventListener('keydown',e=>{
   if(e.isComposing||e.keyCode===229)return;
@@ -661,7 +665,7 @@ cv.addEventListener('keydown',e=>{
   if(e.key==='ArrowRight'){pos.x+=st;e.preventDefault();}
   if(e.key==='ArrowUp'){pos.y-=st;e.preventDefault();}
   if(e.key==='ArrowDown'){pos.y+=st;e.preventDefault();}
-  if(e.key.startsWith('Arrow')){updFieldStatus(activeId);redraw();}
+  if(e.key.startsWith('Arrow')){updFieldStatus(activeId);syncOrigPOS();redraw();}
 });
 
 function hitField(x,y){
@@ -1113,7 +1117,7 @@ function doAlign(dir) {
     const fbtns = document.getElementById('fbt-' + f.id);
     if (fbtns) fbtns.querySelectorAll('.fbtn').forEach(b => b.classList.toggle('on', b.dataset.a === f.align));
   });
-  redraw();
+  syncOrigPOS(); redraw();
   const label = dir === 'center' ? '가운데' : dir === 'left' ? '왼쪽' : '오른쪽';
   toast((activeId ? targets[0].lbl : '전체 필드') + ' → ' + label + ' 정렬 이동됨');
 }
@@ -1125,50 +1129,58 @@ document.getElementById('alignRBtn').onclick = () => doAlign('right');
 // ════════════════════════════════════════
 // 비율 변경
 // ════════════════════════════════════════
-let origW = 0, origH = 0; // 원본 이미지 크기 보존
+let origW = 0, origH = 0;
+// POS 원본값 보존 (비율 바꿔도 항상 원본 기준으로 재계산)
+const origPOS = {}; // {id: {x,y,placed}}
+FIELDS.forEach(f => { origPOS[f.id] = {x:null,y:null,placed:false}; });
+
+// POS가 바뀔 때마다 origPOS도 동기화 (비율 변경 전)
+function syncOrigPOS() {
+  FIELDS.forEach(f => {
+    origPOS[f.id] = {...POS[f.id]};
+  });
+}
 
 function applyRatio(ratio) {
-  if (!bgImg) return;
-  if (!origW) { origW = bgImg.width; origH = bgImg.height; }
+  if (!origBgImg) return;
 
   let newW, newH;
+  const ow = origBgImg.width, oh = origBgImg.height;
+
   if (ratio === 'orig') {
-    newW = origW; newH = origH;
+    newW = ow; newH = oh;
   } else {
     const [rw, rh] = ratio.split(':').map(Number);
-    // 원본 크기 기준으로 비율에 맞게 크롭
-    const origRatio = origW / origH;
+    const origRatio = ow / oh;
     const targetRatio = rw / rh;
     if (targetRatio > origRatio) {
-      newW = origW; newH = Math.round(origW / targetRatio);
+      newW = ow; newH = Math.round(ow / targetRatio);
     } else {
-      newH = origH; newW = Math.round(origH * targetRatio);
+      newH = oh; newW = Math.round(oh * targetRatio);
     }
   }
 
+  // 크롭 오프셋 (가운데 크롭, 원본 기준)
+  const cropX = Math.round((ow - newW) / 2);
+  const cropY = Math.round((oh - newH) / 2);
+
+  // 캔버스 크기 업데이트
   const cv2 = document.getElementById('cv');
   cv2.width = newW; cv2.height = newH;
 
-  // 배치된 텍스트 위치를 새 캔버스 기준으로 재매핑
-  const scaleX = newW / origW, scaleY = newH / origH;
-  // 크롭 오프셋 (가운데 크롭)
-  const cropX = Math.round((origW - newW / scaleX) / 2) * scaleX;
-  const cropY = Math.round((origH - newH / scaleY) / 2) * scaleY;
-
+  // POS를 origPOS(원본 기준) 기반으로 재계산
   FIELDS.forEach(f => {
-    if (!POS[f.id].placed) return;
-    POS[f.id].x = POS[f.id].x * scaleX - cropX;
-    POS[f.id].y = POS[f.id].y * scaleY - cropY;
+    if (!origPOS[f.id].placed) return;
+    POS[f.id].x = origPOS[f.id].x - cropX;
+    POS[f.id].y = origPOS[f.id].y - cropY;
+    POS[f.id].placed = true;
     updFieldStatus(f.id);
   });
 
-  // 오프스크린 캔버스로 크롭된 이미지 생성
+  // 원본 이미지에서 크롭해서 bgImg 생성 (origBgImg는 유지)
   const off = document.createElement('canvas'); off.width = newW; off.height = newH;
   const octx = off.getContext('2d');
-  const sx = Math.round((origW - newW) / 2), sy = Math.round((origH - newH) / 2);
-  octx.drawImage(bgImg, Math.max(0,sx), Math.max(0,sy), newW, newH, 0, 0, newW, newH);
-
-  // 크롭된 이미지를 새 bgImg로
+  octx.drawImage(origBgImg, cropX, cropY, newW, newH, 0, 0, newW, newH);
   const img2 = new Image();
   img2.onload = () => { bgImg = img2; redraw(); };
   img2.src = off.toDataURL('image/png');
@@ -1176,8 +1188,12 @@ function applyRatio(ratio) {
 }
 
 document.getElementById('ratioSel').onchange = e => {
+  // 비율 변경 전에 현재 POS를 origPOS에 저장 (원본 비율일 때만)
+  if (document.getElementById('ratioSel').value === 'orig' ||
+      !origW || bgImg.width === origBgImg.width) {
+    syncOrigPOS();
+  }
   applyRatio(e.target.value);
-  if (e.target.value === 'orig') origW = origH = 0; // 원본 복원 시 리셋
 };
 
 // ════════════════════════════════════════
