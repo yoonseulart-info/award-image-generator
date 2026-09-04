@@ -136,6 +136,15 @@ header .sub{font-size:11px;color:#555577;background:#1a1a2e;border:1px solid #22
 .pdl:hover{background:#7755ee;border-color:#7755ee;color:#fff}
 .empty{text-align:center;color:#2a2a44;font-size:12px;padding:20px 0}
 
+/* ── 프리셋 ── */
+.preset-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.preset-sel{flex:1;min-width:80px;background:#0c0c18;border:1px solid #22223a;border-radius:6px;color:#e2e2ee;padding:5px 7px;font-size:11px;font-family:inherit}
+.preset-sel:focus{outline:none;border-color:#7755ee}
+.pbtn{padding:5px 10px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .13s;white-space:nowrap}
+.pbtn-save{background:#7755ee;color:#fff}.pbtn-save:hover{background:#8866ff}
+.pbtn-load{background:#2d6a4f;color:#fff}.pbtn-load:hover{background:#3d7a5f}
+.pbtn-del{background:#2d1a1a;border:1px solid #5a2222;color:#ff8888}.pbtn-del:hover{background:#3d2020}
+
 /* ── 입력표 탭 ── */
 .sheet-page{width:100%;overflow:hidden;display:flex;flex-direction:column}
 .stbar{background:#12121e;border-bottom:1px solid #1e1e32;padding:8px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
@@ -247,9 +256,26 @@ tbody td:hover .fhandle{opacity:1}
     <div id="fields" style="display:flex;flex-direction:column;gap:4px"></div>
   </div>
 
+  <!-- 프리셋 -->
+  <div>
+    <div class="lbl">④ 레이아웃 프리셋</div>
+    <div class="preset-bar">
+      <select class="preset-sel" id="presetSel">
+        <option value="">-- 프리셋 선택 --</option>
+      </select>
+      <button class="pbtn pbtn-load" id="presetLoadBtn">불러오기</button>
+      <button class="pbtn pbtn-del"  id="presetDelBtn">삭제</button>
+    </div>
+    <div style="display:flex;gap:5px;margin-top:5px">
+      <input type="text" id="presetName" placeholder="프리셋 이름 입력"
+        style="flex:1;background:#0c0c18;border:1px solid #22223a;border-radius:6px;color:#e2e2ee;padding:5px 8px;font-size:11px;font-family:inherit">
+      <button class="pbtn pbtn-save" id="presetSaveBtn">💾 저장</button>
+    </div>
+  </div>
+
   <!-- 비율 -->
   <div>
-    <div class="lbl">④ 이미지 비율</div>
+    <div class="lbl">⑤ 이미지 비율</div>
     <div class="ratio-row">
       <select id="ratioSel" onchange="applyRatio(this.value)">
         <option value="orig">원본</option>
@@ -266,7 +292,7 @@ tbody td:hover .fhandle{opacity:1}
 
   <!-- 수상자 목록 -->
   <div class="winners">
-    <div class="lbl">⑤ 수상자 목록</div>
+    <div class="lbl">⑥ 수상자 목록</div>
     <textarea id="winput" rows="6" placeholder="실기대회명1,실기대회명2,수상,이름,학교,학원명&#10;&#10;예) 선화예중,춘계 미술 실기대회,특선,홍*길,○○중,윤슬미술학원&#10;&#10;입력표 탭 → ➡️ 생성탭에 바로 넣기 추천!"></textarea>
     <p class="hint">탭/쉼표 구분 · 학원명 생략 가능</p>
   </div>
@@ -1135,6 +1161,117 @@ document.getElementById('mapply').onclick=()=>{
 };
 
 // ════════════════════════════
+// 프리셋 저장/불러오기
+// ════════════════════════════
+const PRESET_KEY = 'ysl_presets_v1';
+
+function loadPresets() {
+  try { return JSON.parse(localStorage.getItem(PRESET_KEY)) || {}; }
+  catch { return {}; }
+}
+function savePresets(p) {
+  try { localStorage.setItem(PRESET_KEY, JSON.stringify(p)); }
+  catch { toast('저장 공간 부족'); }
+}
+
+// 현재 설정을 객체로 수집
+function captureSettings() {
+  return {
+    fields: FIELDS.map(f => ({
+      id: f.id, color: f.color, size: f.size, wt: f.wt, align: f.align,
+      sw: f.sw, sc: f.sc, dv: f.dv, ug: f.ug, gt: f.gt, gb: f.gb
+    })),
+    pos: FIELDS.reduce((acc, f) => {
+      acc[f.id] = { ...POS[f.id] }; return acc;
+    }, {}),
+    ratio: document.getElementById('ratioSel').value,
+  };
+}
+
+// 수집한 설정을 적용
+function applySettings(cfg) {
+  if (!cfg) return;
+  // 필드 스타일 복원
+  if (cfg.fields) {
+    cfg.fields.forEach(saved => {
+      const f = FIELDS.find(x => x.id === saved.id);
+      if (!f) return;
+      f.color = saved.color; f.size = saved.size; f.wt = saved.wt;
+      f.align = saved.align; f.sw = saved.sw; f.sc = saved.sc;
+      f.dv = saved.dv; f.ug = saved.ug; f.gt = saved.gt; f.gb = saved.gb;
+    });
+  }
+  // 위치 복원
+  if (cfg.pos) {
+    FIELDS.forEach(f => {
+      if (cfg.pos[f.id]) {
+        POS[f.id] = { ...cfg.pos[f.id] };
+        origPOS[f.id] = { ...cfg.pos[f.id] };
+      }
+    });
+  }
+  // 필드 카드 다시 그리기 (값 반영)
+  buildFields();
+  FIELDS.forEach(f => updFieldStatus(f.id));
+  // 비율 복원
+  if (cfg.ratio) {
+    const rs = document.getElementById('ratioSel');
+    if (rs) rs.value = cfg.ratio;
+    if (cfg.ratio !== 'orig') applyRatio(cfg.ratio);
+  }
+  if (bgImg) redraw();
+}
+
+// 셀렉트 박스 갱신
+function renderPresetSel() {
+  const presets = loadPresets();
+  const sel = document.getElementById('presetSel');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- 프리셋 선택 --</option>';
+  Object.keys(presets).sort().forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    if (name === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+// 저장
+document.getElementById('presetSaveBtn').onclick = () => {
+  const name = document.getElementById('presetName').value.trim();
+  if (!name) { toast('프리셋 이름을 입력하세요'); return; }
+  const presets = loadPresets();
+  if (presets[name] && !confirm('"' + name + '" 프리셋을 덮어쓸까요?')) return;
+  presets[name] = captureSettings();
+  savePresets(presets);
+  renderPresetSel();
+  document.getElementById('presetSel').value = name;
+  toast('"' + name + '" 프리셋 저장됨 ✓');
+};
+
+// 불러오기
+document.getElementById('presetLoadBtn').onclick = () => {
+  const name = document.getElementById('presetSel').value;
+  if (!name) { toast('프리셋을 선택하세요'); return; }
+  const presets = loadPresets();
+  if (!presets[name]) { toast('프리셋을 찾을 수 없어요'); return; }
+  applySettings(presets[name]);
+  toast('"' + name + '" 불러왔어요 ✓');
+};
+
+// 삭제
+document.getElementById('presetDelBtn').onclick = () => {
+  const name = document.getElementById('presetSel').value;
+  if (!name) { toast('삭제할 프리셋을 선택하세요'); return; }
+  if (!confirm('"' + name + '" 프리셋을 삭제할까요?')) return;
+  const presets = loadPresets();
+  delete presets[name];
+  savePresets(presets);
+  renderPresetSel();
+  toast('"' + name + '" 삭제됨');
+};
+
+// ════════════════════════════
 // 토스트
 // ════════════════════════════
 let _tt;
@@ -1143,7 +1280,7 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 // ════════════════════════════
 // 초기화
 // ════════════════════════════
-buildFields();buildSheet();renderSlots();
+buildFields();buildSheet();renderSlots();renderPresetSel();
 </script>
 </body>
 </html>
